@@ -1,0 +1,17 @@
+{
+  "name": "مثاني",
+  "short_name": "مثاني",
+  "description": "منصة تعين على مواصلة ذكر الله والدعاء",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3fcfa",
+  "theme_color": "#015149",
+  "icons": [
+    { "src": "/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
