@@ -23,7 +23,7 @@ setInterval(() => {
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t);
 }, 3_600_000).unref();
 
-app.listen(config.port, () => {
+app.listen(config.port, '0.0.0.0', () => {
   console.log(`\n  منصة مثاني لمواصلة الذكر والدعاء تعمل على: http://localhost:${config.port}`);
   console.log(`  مزود الرسائل: ${config.provider}${config.provider === 'console' ? '  (الرموز تظهر هنا في السجل)' : ''}\n`);
 });
