@@ -26,6 +26,10 @@ export function createApp() {
   if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
 
   app.use(helmet({
+    // على http:// عنوان عام ليست هذه الترويسات موثوقة، وupgrade-insecure-requests
+    // يحوّل css وjs إلى https فيفشل التحميل. تُضاف لاحقاً فقط إذا كان الطلب نفسه عبر HTTPS.
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
@@ -36,10 +40,20 @@ export function createApp() {
         'img-src': ["'self'", 'data:', 'blob:'],
         'connect-src': ["'self'"],
         'frame-ancestors': ["'none'"],
-        'upgrade-insecure-requests': config.isProd ? [] : null,
+        'upgrade-insecure-requests': null,
       },
     },
   }));
+  app.use((req, res, next) => {
+    if (!req.secure) return next();
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Origin-Agent-Cluster', '?1');
+    const csp = res.getHeader('Content-Security-Policy');
+    if (typeof csp === 'string' && !csp.includes('upgrade-insecure-requests')) {
+      res.setHeader('Content-Security-Policy', `${csp};upgrade-insecure-requests`);
+    }
+    next();
+  });
   app.use(cookieParser());
   app.use(express.json({ limit: '200kb' }));
   app.use('/api', sameOriginOnly, loadSession);
