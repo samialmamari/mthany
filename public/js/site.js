@@ -1,4 +1,4 @@
-import { h, mount, get, post, fail, toast, state } from './core.js';
+import { h, mount, get, post, fail, toast, state, icon } from './core.js';
 
 /**
  * الموقع التعريفي العام (قبل تسجيل الدخول): شريط علوي وتذييل وصفحات ثابتة.
@@ -6,7 +6,7 @@ import { h, mount, get, post, fail, toast, state } from './core.js';
  */
 const NAV = [
   ['#/site', 'الرئيسية'],
-  ['#/site/about', 'عن الدورة'],
+  ['#/site?to=about', 'عن الدورة'],
   ['#/site/courses', 'التسجيل'],
   ['#/gift', 'الإهداء'],
 ];
@@ -88,83 +88,92 @@ function thanksPage(root, current, o) {
       o.member ? null : h('a', { class: 's-btn s-btn-green', href: '#/site' }, 'الرئيسية')))));
 }
 
-/** عنوان يسمح بكلمة مميّزة واحدة بين <b></b> دون إدراج HTML */
-function richTitle(txt) {
-  const out = [];
-  const re = /<b>(.*?)<\/b>/g;
-  let last = 0; let m;
-  while ((m = re.exec(txt))) {
-    if (m.index > last) out.push(txt.slice(last, m.index));
-    out.push(h('b', {}, m[1]));
-    last = m.index + m[0].length;
-  }
-  if (last < txt.length) out.push(txt.slice(last));
-  return out;
-}
-
 export const seatBadge = (c) => h('span', { class: `s-seat s-seat-${c.seat_state}` }, c.seat_label);
 
 // ---------------------------------------------------------------- الهيكل
-/** قائمة «التسجيل»: تفتح بالضغط وتغلق باختيار أو بمفتاح Esc — بلا نوافذ منبثقة */
-function regMenu(current) {
-  const isHere = REG_LINKS.some(([href]) => href === current);
-  const items = h('div', { class: 's-menu-items' }, REG_LINKS.map(([href, label]) =>
-    h('a', { href, onclick: () => { box.open = false; } }, label)));
-  const box = h('details', { class: 's-menu' },
-    h('summary', { 'aria-current': isHere ? 'page' : null }, 'التسجيل ▾'), items);
-  box.addEventListener('keydown', (e) => { if (e.key === 'Escape') box.open = false; });
-  return box;
+const here = () => location.hash || '#/site';
+function isCurrent(href) {
+  const hash = here();
+  if (href.includes('to=about')) return hash.includes('to=about');
+  if (href === '#/site') return hash === '#/site' || hash === '#/site/';
+  return hash === href || hash.startsWith(`${href}?`) || hash.startsWith(`${href}/`);
+}
+/** من الصفحة الرئيسية ننزل للقسم، ومن غيرها ننتقل ثم ننزل */
+function jump(id) {
+  return (e) => {
+    const onHome = here() === '#/site' || here() === '#/site/' || here().startsWith('#/site?');
+    const el = document.getElementById(id);
+    if (onHome && el) {
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 }
 
-function header(current) {
+function brand() {
+  return h('a', { class: 's-logo', href: '#/site', 'aria-label': 'مثاني' },
+    h('span', { class: 's-logo-mark' }, h('img', { src: '/img/logo.png', alt: '' })),
+    h('span', { class: 's-logo-text' }, h('strong', {}, 'مثاني'), h('small', {}, 'دورة الاستشفاء')));
+}
+
+function header() {
   const drawer = h('nav', { class: 's-drawer', hidden: true, 'aria-label': 'القائمة' },
-    ...NAV.map(([href, label]) => h('a', { href, 'aria-current': current === href ? 'page' : null, onclick: () => toggle(false) }, label)),
-    ...REG_LINKS.map(([href, label]) => h('a', { href, style: 'padding-inline-start:1.6rem;opacity:.9', onclick: () => toggle(false) }, '— ', label)),
-    h('a', { class: 's-gift', href: '#/gift', onclick: () => toggle(false) }, '🎁 أهدِ دورة'),
-    state.user ? null : h('a', { class: 's-gift', href: '#/register', onclick: () => toggle(false) }, 'إنشاء حساب'),
-    h('a', { href: state.user ? '#/my' : '#/login', onclick: () => toggle(false) }, state.user ? 'لوحتي' : 'دخول'));
-  const btn = h('button', { class: 's-menubtn', type: 'button', 'aria-expanded': 'false', 'aria-label': 'فتح القائمة', onclick: () => toggle(drawer.hidden) }, '☰ القائمة');
+    ...NAV.map(([href, label]) => h('a', { href, 'aria-current': isCurrent(href) ? 'page' : null, onclick: (e) => { toggle(false); if (href.includes('to=about')) jump('about')(e); } }, label)),
+    ...REG_LINKS.map(([href, label]) => h('a', { class: 's-sub', href, onclick: () => toggle(false) }, label)),
+    state.user
+      ? h('a', { href: '#/my', onclick: () => toggle(false) }, 'لوحتي')
+      : [h('a', { href: '#/login', onclick: () => toggle(false) }, 'دخول'), h('a', { href: '#/register', onclick: () => toggle(false) }, 'إنشاء حساب')]);
+  const btn = h('button', { class: 's-menubtn', type: 'button', 'aria-expanded': 'false', 'aria-label': 'فتح القائمة', onclick: () => toggle(drawer.hidden) }, '☰');
   function toggle(open) {
     drawer.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
     btn.setAttribute('aria-label', open ? 'إغلاق القائمة' : 'فتح القائمة');
   }
+  const account = state.user
+    ? h('a', { class: 's-btn s-btn-green s-pill', href: '#/my' }, 'لوحتي', icon('user'))
+    : [
+      h('a', { class: 's-btn s-btn-sand s-pill', href: '#/register' }, 'إنشاء حساب'),
+      h('a', { class: 's-btn s-btn-green s-pill', href: '#/login' }, 'دخول', icon('lock')),
+    ];
   return h('header', { class: 's-header' },
     h('div', { class: 's-bar' },
-      h('a', { class: 's-logo', href: '#/site' }, h('img', { src: '/img/logo.png', alt: 'مثاني' })),
-      h('div', { class: 's-spacer' }),
-      h('nav', { class: 's-nav', 'aria-label': 'التنقل' },
-        h('a', { href: '#/site', 'aria-current': current === '#/site' ? 'page' : null }, 'الرئيسية'),
-        h('a', { href: '#/site/about', 'aria-current': current === '#/site/about' ? 'page' : null }, 'عن الدورة'),
-        regMenu(current),
-        h('a', { href: '#/gift', 'aria-current': current === '#/gift' ? 'page' : null }, 'الإهداء'),
-        h('a', { href: state.user ? '#/my' : '#/login' }, state.user ? 'لوحتي' : 'دخول')),
-      state.user ? null : h('a', { class: 's-btn s-btn-light s-btn-sm s-signup', href: '#/register' }, 'إنشاء حساب'),
-      h('a', { class: 's-btn s-btn-peach s-btn-sm', href: '#/gift' }, '🎁 أهدِ دورة'),
+      brand(),
+      h('nav', { class: 's-nav', 'aria-label': 'التنقل الرئيسي' },
+        NAV.map(([href, label]) => h('a', {
+          href,
+          'aria-current': isCurrent(href) ? 'page' : null,
+          onclick: href.includes('to=about') ? jump('about') : null,
+        }, label))),
+      h('div', { class: 's-actions' }, account),
       btn),
     drawer);
 }
 
 function footer(d) {
-  return h('footer', { class: 's-footer s-pattern' }, h('div', { class: 's-wrap' },
+  return h('footer', { class: 's-footer' }, h('div', { class: 's-wrap' },
     h('div', { class: 's-footer-grid' },
-      h('div', {}, h('h4', {}, 'مثاني'), h('p', {}, 'نعين على مواصلة ذكر الله والدعاء، بخطوات هادئة تناسب كل الأعمار.')),
+      h('div', { class: 's-foot-brand' },
+        h('span', { class: 's-logo-mark' }, h('img', { src: '/img/logo.png', alt: 'مثاني' })),
+        h('p', {}, 'نعين على مواصلة ذكر الله والدعاء، بخطوات هادئة تناسب كل الأعمار.')),
+      h('div', {}, h('h4', {}, 'الرئيسية'),
+        h('a', { href: '#/site' }, 'الرئيسية'),
+        h('a', { href: '#/site?to=about', onclick: jump('about') }, 'عن الدورة'),
+        h('a', { href: '#/site?to=outcomes', onclick: jump('outcomes') }, 'ماذا ستحقق'),
+        h('a', { href: '#/gift' }, 'الإهداء')),
       h('div', {}, h('h4', {}, 'التسجيل'), ...REG_LINKS.map(([href, label]) => h('a', { href }, label))),
-      h('div', {}, h('h4', {}, 'روابط'),
-        h('a', { href: '#/site/about' }, 'عن الدورة'),
-        h('a', { href: '#/gift' }, 'أهدِ دورة'),
+      h('div', {}, h('h4', {}, 'التواصل'),
         state.user ? null : h('a', { href: '#/register' }, 'إنشاء حساب'),
         h('a', { href: state.user ? '#/my' : '#/login' }, state.user ? 'لوحتي' : 'تسجيل الدخول'),
+        d?.contact?.whatsapp ? h('a', { href: `https://wa.me/${String(d.contact.whatsapp).replace(/\D/g, '')}`, target: '_blank', rel: 'noopener noreferrer' }, `واتساب: ${d.contact.whatsapp}`) : null,
         d?.contact?.note ? h('p', { style: 'margin-top:.5rem' }, d.contact.note) : null)),
     h('div', { class: 's-copy' }, `جميع الحقوق محفوظة — مؤسسة مثاني ${new Date().getFullYear()}`)));
 }
 
-/** قالب الصفحة: شريط + محتوى + شريط إهداء للجوال + تذييل */
+/** قالب الصفحة: شريط + محتوى + تذييل */
 export function shell(root, current, body, d) {
   mount(root, h('div', { class: 'site' },
-    header(current),
+    header(),
     h('main', { class: 's-main', id: 'site-main', tabindex: -1 }, body),
-    current === '#/gift' ? null : h('div', { class: 's-giftbar' }, h('a', { class: 's-btn s-btn-peach s-btn-block', href: '#/gift' }, '🎁 أهدِ دورة لمن تحب')),
     footer(d)));
   window.scrollTo(0, 0);
 }
@@ -172,39 +181,110 @@ export function shell(root, current, body, d) {
 export const loading = () => h('div', { class: 's-wrap', style: 'padding:3rem 1rem;text-align:center;color:#5b6b68' }, 'جارٍ التحميل…');
 
 // ---------------------------------------------------------------- الصفحة الرئيسية
-export async function renderSiteHome(root) {
+const GLYPHS = ['book', 'calendar', 'users', 'gift', 'check', 'tasks', 'eye', 'link'];
+const mark = (name) => h('span', { class: 's-ic', 'aria-hidden': 'true' }, icon(name));
+
+/** العنوان: ما قبل الكلمة المميّزة بلون داكن، وما داخل <b> بالأخضر */
+function heroTitle(txt) {
+  const m = String(txt || '').match(/^(.*?)<b>(.*?)<\/b>(.*)$/s);
+  if (!m) return h('span', { class: 's-hero-dark' }, txt || '');
+  const dark = `${m[1]} ${m[3]}`.replace(/\s+/g, ' ').trim();
+  return [dark ? h('span', { class: 's-hero-dark' }, dark) : null, h('span', { class: 's-hero-green' }, m[2])];
+}
+
+const textLines = (text) => String(text || '').split('\n').map((s) => s.trim()).filter(Boolean);
+
+export async function renderSiteHome(root, query) {
   shell(root, '#/site', loading());
   let d;
   try { d = await get('/api/site/home'); }
   catch (e) { fail(e); shell(root, '#/site', h('div', { class: 's-wrap', style: 'padding:3rem 1rem' }, h('p', {}, 'تعذّر تحميل المحتوى، حدّث الصفحة.'))); return; }
 
-  const hero = h('section', { class: 's-hero s-pattern' }, h('div', { class: 's-wrap' },
-    h('div', { class: 's-eyebrow' }, d.hero.eyebrow),
-    h('h1', {}, richTitle(d.hero.title)),
-    h('p', {}, d.hero.text),
-    h('div', { class: 's-hero-actions' },
-      h('a', { class: 's-btn s-btn-peach', href: state.user && d.hero.primary.href === '#/register' ? '#/site/courses' : d.hero.primary.href }, d.hero.primary.label),
-      h('a', { class: 's-btn s-btn-light', href: d.hero.secondary.href }, d.hero.secondary.label)),
-    h('p', { class: 's-hero-note' }, 'التسجيل بسيط: اختر ما يناسبك، واملأ بياناتك، وابدأ.')));
+  const primaryHref = state.user && d.hero.primary.href === '#/register' ? '#/site/courses' : d.hero.primary.href;
+  const highlights = [
+    ['book', 'منهجية هادئة'],
+    ['calendar', 'متابعة يومية'],
+    ['users', 'مجتمع للذكر'],
+    ['link', 'دورة عن بُعد'],
+  ];
+  const hero = h('section', { class: 's-hero', 'aria-label': String(d.hero.title || '').replace(/<[^>]+>/g, '') },
+    h('div', { class: 's-wrap' },
+      h('div', { class: 's-hero-copy' },
+        h('h1', {}, heroTitle(d.hero.title)),
+        h('p', {}, d.hero.text),
+        h('div', { class: 's-hero-actions' },
+          h('a', { class: 's-btn s-btn-green', href: primaryHref }, d.hero.primary.label, icon('chevL')),
+          h('a', { class: 's-btn s-btn-outline', href: d.hero.secondary.href }, d.hero.secondary.label, icon('chevL'))))));
 
-  const about = h('section', { class: 's-section' }, h('div', { class: 's-wrap' },
-    h('div', { class: 's-section-head' }, h('h2', {}, 'ما هي دورة الاستشفاء؟')),
-    h('div', { class: 's-cards c3' }, d.about.map((c) => h('article', { class: 's-card' },
-      h('span', { class: 's-ic' }, c.icon), h('h3', {}, c.title), h('p', {}, c.text))))));
+  const stats = h('section', { class: 's-stats', 'aria-label': 'لمحة' },
+    h('div', { class: 's-wrap s-stats-row' }, highlights.map(([name, label]) =>
+      h('div', { class: 's-stat' }, icon(name), h('span', {}, label)))));
 
-  const paths = h('section', { class: 's-section', style: 'background:#fffdf8' }, h('div', { class: 's-wrap' },
-    h('div', { class: 's-section-head' }, h('h2', {}, 'اختر طريقك'),
-      h('p', {}, 'أربعة طرق للانتفاع، اختر ما يناسب وقتك وحالك.')),
-    h('div', { class: 's-cards c4' }, d.paths.map((p) => h('div', { class: 's-card s-card-path' },
-      h('span', { class: 's-ic' }, p.icon), h('h3', {}, p.title), h('p', {}, p.text),
-      h('a', { class: `s-btn s-btn-sm s-btn-block ${['#/site/courses', '#/site/year-plan'].includes(p.href) ? 's-btn-peach' : 's-btn-ghost'}`, href: p.href, style: 'margin-top:1rem' }, p.cta))))));
+  const paths = h('section', { class: 's-section', id: 'paths' }, h('div', { class: 's-wrap' },
+    h('div', { class: 's-panel' },
+      h('div', { class: 's-panel-head' },
+        h('h2', {}, 'اختر طريقك'),
+        h('p', {}, 'أربعة طرق للانتفاع، اختر ما يناسب وقتك وحالك.')),
+      h('div', { class: 's-jumps' }, d.paths.map((p, i) => h('a', { class: 's-jump', href: p.href },
+        mark(GLYPHS[i % GLYPHS.length]),
+        h('h3', {}, p.title),
+        h('p', { class: 's-clamp' }, p.text),
+        h('span', { class: 's-go' }, p.cta, icon('chevL'))))))));
 
-  const gift = h('section', { class: 's-gift-strip s-pattern' }, h('div', { class: 's-wrap' },
-    h('div', { class: 's-eyebrow', style: 'color:var(--s-peach)' }, '🎁 الإهداء'),
-    h('h2', {}, d.gift.title), h('p', {}, d.gift.text),
-    h('div', { style: 'margin-top:1.2rem' }, h('a', { class: 's-btn s-btn-peach', href: '#/gift' }, d.gift.cta))));
+  const goalItem = d.about.find((a) => textLines(a.text).length >= 4) || null;
+  const essays = d.about.filter((a) => a !== goalItem);
+  const fullAbout = (text) => {
+    const lines = textLines(text);
+    if (lines.length < 2) return h('p', {}, text);
+    return h('ol', { class: 's-goals' }, lines.map((line) => h('li', {}, line)));
+  };
+  const aboutBody = (text) => {
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length <= 28) return fullAbout(text);
+    const box = h('div', { class: 's-about-body' });
+    const preview = h('p', {}, `${words.slice(0, 28).join(' ')}…`);
+    let open = false;
+    const btn = h('button', { class: 's-more-btn', type: 'button', 'aria-expanded': 'false', onclick: () => {
+      open = !open;
+      btn.textContent = open ? 'إخفاء النص' : 'استعرض النص كامل';
+      btn.setAttribute('aria-expanded', String(open));
+      mount(box, open ? fullAbout(text) : preview, btn);
+    } }, 'استعرض النص كامل');
+    mount(box, preview, btn);
+    return box;
+  };
+  const about = h('section', { class: 's-section', id: 'about' }, h('div', { class: 's-wrap' },
+    h('div', { class: 's-section-head' },
+      h('h2', {}, 'ما هي دورة الاستشفاء؟'),
+      h('p', {}, 'فكرة الدورة وطريقتها، بكلمات قصيرة ثم التفصيل لمن أراد.')),
+    h('div', { class: 's-features' }, essays.map((c, i) => h('article', { class: 's-feature' },
+      mark(GLYPHS[i % GLYPHS.length]),
+      h('h3', {}, c.title),
+      aboutBody(c.text))))));
 
-  shell(root, '#/site', [hero, about, paths, gift], d);
+  const goals = textLines(goalItem?.text).slice(0, 8);
+  const outcomes = h('section', { class: 's-section', id: 'outcomes' }, h('div', { class: 's-wrap' },
+    h('div', { class: 's-section-head' },
+      h('h2', {}, 'ماذا ستحقق في الدورة؟'),
+      h('p', {}, goalItem?.title ? 'مخرجات تمشي معك بعد انتهاء اللقاءات.' : '')),
+    h('div', { class: 's-outcomes' }, goals.map((line, i) => {
+      const words = line.replace(/[.،]\s*$/, '').split(/\s+/);
+      return h('article', { class: 's-outcome' },
+        mark(GLYPHS[i % GLYPHS.length]),
+        h('h3', {}, words.slice(0, 2).join(' ')),
+        h('p', {}, line));
+    }))));
+
+  const gift = h('section', { class: 's-section', id: 'gift' }, h('div', { class: 's-wrap' },
+    h('div', { class: 's-gift-panel' },
+      h('div', { class: 's-eyebrow' }, 'الإهداء'),
+      h('h2', {}, d.gift.title),
+      h('p', {}, d.gift.text),
+      h('div', { style: 'margin-top:1.2rem' }, h('a', { class: 's-btn s-btn-green', href: '#/gift' }, d.gift.cta, icon('chevL'))))));
+
+  shell(root, '#/site', [hero, stats, paths, about, outcomes, gift], d);
+  const to = typeof query?.get === 'function' ? query.get('to') : '';
+  if (to) requestAnimationFrame(() => document.getElementById(to)?.scrollIntoView({ block: 'start' }));
 }
 
 // ---------------------------------------------------------------- صفحة الدورات عن بُعد
