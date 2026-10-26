@@ -30,6 +30,7 @@ function navItems() {
   const plan = { href: '#/plan', ic: 'tasks', label: 'خطتي', short: 'خطتي' };
   const giftNew = { href: '#/gift', ic: 'gift', label: 'أهدِ دورة', short: 'أهدِ' };
   const giftMine = { href: '#/gifts', ic: 'gift', label: 'هداياي', short: 'هداياي' };
+  const guide = { href: '/guide.html', ic: 'file', label: 'دليل الاستخدام', short: 'الدليل' };
   const comm = state.community?.enabled === false && !isAdmin() ? [] : [{ href: '#/community', ic: 'users', label: 'المجتمع', short: 'المجتمع' }];
   // «طلباتي» لا تظهر في القائمة؛ يُوصل إليها من صفحة المكتبة. وعدّاد السلة يظهر على «المكتبة».
   const lib = { href: '#/library', ic: 'book', label: 'المكتبة', short: 'المكتبة', badgeKey: 'cart' };
@@ -38,13 +39,13 @@ function navItems() {
     // قبل قبول الإدارة لإيصاله: وردي اليوم (لوحة متابعتي) والمكتبة والحساب فقط
     const panel = { href: '#/my', ic: 'inbox', label: 'لوحة المتابعة', short: 'المتابعة' };
     const wird = { locked: true, ic: 'lock', label: 'وردي اليوم', short: 'وردي' };
-    return { main: [panel, wird, lib, { href: '#/more', ic: 'more', label: 'المزيد', short: 'المزيد' }], side: [panel, wird, lib, giftNew, giftMine, account], more: [giftNew, giftMine, account] };
+    return { main: [panel, wird, lib, { href: '#/more', ic: 'more', label: 'المزيد', short: 'المزيد' }], side: [panel, wird, lib, giftNew, giftMine, account, guide], more: [giftNew, giftMine, account, guide] };
   }
   if (!staff()) {
     return {
       main: [today, stats, lib, ...comm, { href: '#/more', ic: 'more', label: 'المزيد', short: 'المزيد' }],
-      side: [today, plan, stats, history, lib, ...comm, giftNew, giftMine, account],
-      more: [plan, history, giftNew, giftMine, account],
+      side: [today, plan, stats, history, lib, ...comm, giftNew, giftMine, account, guide],
+      more: [plan, history, giftNew, giftMine, account, guide],
     };
   }
   const reviewer = state.community?.reviewer ? [{ href: '#/community-admin', ic: 'inbox', label: 'إدارة المجتمع', short: 'إدارة المجتمع', badgeKey: 'pending' }] : [];
@@ -64,11 +65,11 @@ function navItems() {
   const mine = [today, plan, stats, history, lib, giftNew, giftMine];
   return {
     main: [admin[0], admin[1], admin[2], ...(reviewer.length ? reviewer : [admin[3]]), { href: '#/more', ic: 'more', label: 'المزيد', short: 'المزيد' }],
-    side: [...admin, { sep: true }, ...mine, ...comm, account],
+    side: [...admin, { sep: true }, ...mine, ...comm, account, guide],
     more: [...admin.filter((i) => !['#/dashboard', '#/tracking', '#/tasks'].includes(i.href) && !(reviewer.length ? false : i === admin[3])), ...mine, ...comm, account],
     // «المزيد» للإدارة على قسمين: أدوات الإدارة، ثم ما يخص المستخدم كعضو
     moreAdmin: admin.filter((i) => !['#/dashboard', '#/tracking', '#/tasks'].includes(i.href) && !(reviewer.length ? false : i === admin[3])),
-    moreMine: [...mine, ...comm, account],
+    moreMine: [...mine, ...comm, account, guide],
   };
 }
 

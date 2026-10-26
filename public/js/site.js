@@ -9,6 +9,7 @@ const NAV = [
   ['#/site?to=about', 'عن الدورة'],
   ['#/site/courses', 'التسجيل'],
   ['#/gift', 'الإهداء'],
+  ['/guide.html', 'الدليل'],
 ];
 const REG_LINKS = [
   ['#/site/courses', 'دورات عن بُعد'],
@@ -159,7 +160,8 @@ function footer(d) {
         h('a', { href: '#/site' }, 'الرئيسية'),
         h('a', { href: '#/site?to=about', onclick: jump('about') }, 'عن الدورة'),
         h('a', { href: '#/site?to=outcomes', onclick: jump('outcomes') }, 'ماذا ستحقق'),
-        h('a', { href: '#/gift' }, 'الإهداء')),
+        h('a', { href: '#/gift' }, 'الإهداء'),
+        h('a', { href: '/guide.html' }, 'دليل الاستخدام')),
       h('div', {}, h('h4', {}, 'التسجيل'), ...REG_LINKS.map(([href, label]) => h('a', { href }, label))),
       h('div', {}, h('h4', {}, 'التواصل'),
         state.user ? null : h('a', { href: '#/register' }, 'إنشاء حساب'),
